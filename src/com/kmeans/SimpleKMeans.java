@@ -65,24 +65,24 @@ public class SimpleKMeans {
 					kCentroids.add(index, newkCentroids.get(index));
 					index++;
 				}
-				System.out.println("KCentroids before clustering are " + kCentroids);
-				System.out.println("Calling clustering " + iter_count);
+				//System.out.println("KCentroids before clustering are " + kCentroids);
+				//System.out.println("Calling clustering " + iter_count);
 				clustering(input_folder, iter_count);	
 			}
-			
+			//System.out.println("Computing new Centroids");
+			computenewcentroids(input_folder, k_value, iter_count, false);
+			System.out.println("kCentroids are " + kCentroids);
+			System.out.println("newKCentroids are " + newkCentroids);
 			System.out.println("Calling checkconvergence");
 			converged = checkconvergence(iter_count, k_value);
 			if (converged != true)
 			{
 				iter_count++;
-				//System.out.println("kCentroids are " + kCentroids);
-				//System.out.println("newKCentroids are " + newkCentroids);
-				System.out.println("Computing new Centroids");
-				computenewcentroids(input_folder, k_value, iter_count, false);
 				output.clear();	
 			}
 			else
 			{
+				System.out.println("Done Clustering. \nKindly check files numbered output0,output1.. for results in " + input_folder);
 				break;
 			}
 		}
@@ -145,7 +145,7 @@ public class SimpleKMeans {
 			newkCentroids.clear();
 			// Centroids are calculated as mean of all data points.
 			for (Datapoint center: kCentroids){
-				System.out.println("center value is " + center);
+				//System.out.println("center value is " + center);
 				int valuescount = 0;
 				Datapoint sum = new Datapoint(0.0,0.0);
 				for (Datapoint point:output.get(center)){
@@ -153,8 +153,8 @@ public class SimpleKMeans {
 					sum.y = sum.y + point.y;
 					valuescount++;
 				}
-				System.out.println("Sum x is " + sum.x + " Sum y is " + sum.y);
-				System.out.println("Values count is " + valuescount);
+				//System.out.println("Sum x is " + sum.x + " Sum y is " + sum.y);
+				//System.out.println("Values count is " + valuescount);
 				Datapoint newcentroid = new Datapoint(sum.x/valuescount, sum.y/valuescount);
 				newkCentroids.add(newcentroid);
 				writer.println(centroidcount + "|" + newcentroid);
@@ -162,8 +162,8 @@ public class SimpleKMeans {
 			}
 		}
 		writer.close();
-		System.out.println("kCentroids are " + kCentroids);
-		System.out.println("newKCentroids are " + newkCentroids);
+		//System.out.println("kCentroids are " + kCentroids);
+		//System.out.println("newKCentroids are " + newkCentroids);
 	}
 	
 	public static void clustering(String input_folder, int iter_count) throws Exception{
@@ -210,27 +210,26 @@ public class SimpleKMeans {
 	}
 	
 	public static boolean checkconvergence(int iter_count, int k) throws Exception{
-		//Convergence can either be by iteration count or when previous and current centers are below threshold change.
+		//Convergence currently done by iteration count 
+		// Convergence to be added when previous and current centers are same.
 		if (iter_count == 10){
 			return true;
 		}
 		else {
-			/*
 			int index = 0;
 			double edist = 0.0;
-			while (index < k){
-				//System.out.println("Index is " + index + " k value is " + k);
+			while (index != k){
+				System.out.println("Index is " + index + " k value is " + k);
 				if (newkCentroids.isEmpty() == false){
 					edist = Euclideandistance(kCentroids.get(index),newkCentroids.get(index));
-					if (edist <= 0.1){
-						return true;
-					}
+					if (edist != 0.0){
+						return false;
+						}
 					}
 				index++;
 				}
-				*/
 			}
-		return false;
+		return true;
 		}
 
 }
