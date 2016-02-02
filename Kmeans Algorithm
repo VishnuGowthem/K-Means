@@ -1,0 +1,13 @@
+
+Simple K-Means Algorithm :
+
+1. Choose the smallest possible K value possible.
+	1a. Choose random k data points as centers from the Input data set.
+	1b. Calculate distance from each center for each of the data point.
+	1c. Group or Cluster data points to center with least distance. (Euclidean distance)
+	1d. Compute New center from all the data points by cluster. (Mean)
+	1e. Repeat steps 1b, 1c, 1d
+		1f. Stop when there is no change in center or change from previous center is below 
+		decided threshold value or when decided iterations count is reached.
+2. Repeat steps 1a to 1f for next K value till maximum possible k value.
+3. Choose k value and corresponding clustering based on the "Elbow theorem" after plotting SSE of all calculated K values.
