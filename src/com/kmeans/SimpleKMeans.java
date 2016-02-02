@@ -13,8 +13,8 @@ import org.apache.hadoop.mapred.Reducer;
 import java.awt.Point;
 
 class Datapoint{
-	final double x;
-	final double y;
+	double x;
+	double y;
 	
 	public Datapoint(final double x, final double y) {
 		this.x = x;
@@ -29,8 +29,10 @@ class Datapoint{
 
 public class SimpleKMeans {
 	
+	public static Map<Datapoint, List<Datapoint>> output = new HashMap<Datapoint, List<Datapoint>>();
 	public static List<Datapoint> data = new ArrayList<Datapoint>();
 	public static List<Datapoint> kCentroids = new ArrayList<Datapoint>();
+	public static List<Datapoint> newkCentroids = new ArrayList<Datapoint>();
 	public static String DATAPATH = "/data.csv";
 	public static String CENTROID = "/centroid";
 	public static String OUTPUT = "/output";
@@ -45,15 +47,44 @@ public class SimpleKMeans {
 		
 		int iter_count = 0;
 		boolean converged = false;
-		while(converged != true){
+		while(true){
 			if (iter_count == 0)
 			{
+				//System.out.println("Calling initialize");
 				initialize(input_folder, k_value);
+				//System.out.println("Calling clustering " + iter_count);
+				clustering(input_folder, iter_count);
 			}
-			clustering(input_folder);
-			iter_count++;
-			//computecentroids(input_folder, k_value, false);
-			converged = checkconvergence(iter_count);
+			else
+			{
+				//System.out.println("kCentroids are " + kCentroids);
+				//kCentroids = newkCentroids;
+				kCentroids.clear();
+				int index = 0;
+				while(index < newkCentroids.size()){
+					kCentroids.add(index, newkCentroids.get(index));
+					index++;
+				}
+				System.out.println("KCentroids before clustering are " + kCentroids);
+				System.out.println("Calling clustering " + iter_count);
+				clustering(input_folder, iter_count);	
+			}
+			
+			System.out.println("Calling checkconvergence");
+			converged = checkconvergence(iter_count, k_value);
+			if (converged != true)
+			{
+				iter_count++;
+				//System.out.println("kCentroids are " + kCentroids);
+				//System.out.println("newKCentroids are " + newkCentroids);
+				System.out.println("Computing new Centroids");
+				computenewcentroids(input_folder, k_value, iter_count, false);
+				output.clear();	
+			}
+			else
+			{
+				break;
+			}
 		}
 	}
 	
@@ -89,21 +120,20 @@ public class SimpleKMeans {
 				}
 			}
 		}
-		computecentroids(input_folder, k, true);
+		computenewcentroids(input_folder, k, 0, true);
 	}
 	
 	// Method to compute centroids during several iterations
-	public static void computecentroids(String input_folder, int k, boolean random) throws Exception{
+	public static void computenewcentroids(String input_folder, int k, int iter_count, boolean random) throws Exception{
 		int length = data.size();
-		System.out.println("Length is " + length);
 		int centroidcount = 0;
 		int temp = 0;
-		String centroidfile = input_folder + CENTROID;
+		String centroidfile = input_folder + CENTROID + iter_count;
 		PrintWriter writer = new PrintWriter(centroidfile, "UTF-8");
-		if (random == true){	
+		if (random == true){
+			kCentroids.clear();
 			// Centroids are computed for the first time. 
 			// Its enough if widely spaced random data points are picked as Centroids.
-			kCentroids.clear();
 			while (centroidcount < k) {
 				kCentroids.add(data.get(temp));
 				writer.println(centroidcount + "|" + data.get(temp));
@@ -112,22 +142,44 @@ public class SimpleKMeans {
 				}
 		}
 		else {
-			
+			newkCentroids.clear();
+			// Centroids are calculated as mean of all data points.
+			for (Datapoint center: kCentroids){
+				System.out.println("center value is " + center);
+				int valuescount = 0;
+				Datapoint sum = new Datapoint(0.0,0.0);
+				for (Datapoint point:output.get(center)){
+					sum.x = sum.x + point.x;
+					sum.y = sum.y + point.y;
+					valuescount++;
+				}
+				System.out.println("Sum x is " + sum.x + " Sum y is " + sum.y);
+				System.out.println("Values count is " + valuescount);
+				Datapoint newcentroid = new Datapoint(sum.x/valuescount, sum.y/valuescount);
+				newkCentroids.add(newcentroid);
+				writer.println(centroidcount + "|" + newcentroid);
+				centroidcount++;
+			}
 		}
 		writer.close();
+		System.out.println("kCentroids are " + kCentroids);
+		System.out.println("newKCentroids are " + newkCentroids);
 	}
 	
-	public static void clustering(String input_folder) throws Exception{
-		String outputfile = input_folder + OUTPUT;
+	public static void clustering(String input_folder, int iter_count) throws Exception{
+		String outputfile = input_folder + OUTPUT + iter_count;
 		PrintWriter writer = new PrintWriter(outputfile, "UTF-8");
 		// Finding the minimum center for a point
 		for (Datapoint point: data) {
+			int centerindex = 0;
 			double mindist = Double.MAX_VALUE;
 			double newdist = Double.MAX_VALUE;
 			Datapoint nearestcenter = kCentroids.get(0);
-			int centerindex = 0;
 			for (Datapoint center: kCentroids){
 				newdist = Euclideandistance(point, center);
+				//System.out.println("prevnearestcenter : "+nearestcenter);
+				//System.out.println("mindist : " + mindist);
+				//System.out.println("newdist : " + newdist);
 				if (Math.abs(newdist) < Math.abs(mindist)){
 					mindist = newdist;
 					nearestcenter = center;
@@ -135,19 +187,50 @@ public class SimpleKMeans {
 				}
 			}
 			writer.println(centerindex + "|" + nearestcenter + "|" + point);
+			addtoOutput(nearestcenter,point);
 		}
 		writer.close();
+	}
+	
+	public static void addtoOutput(Datapoint center, Datapoint point) throws Exception{
+		List<Datapoint> values = output.get(center);
+		if (values == null){
+			values = new ArrayList<Datapoint>();
+		}
+		values.add(point);
+		output.put(center,values);
 	}
 	
 	public static double Euclideandistance(Datapoint a, Datapoint b) throws Exception{
 		// Euclidean distance between two points a(x1,y1) and b(x2,y2) is d(a,b) = squareroot[(x2-x1)^2 + (y2-y1)^2]
 		double edist = 0.0;
 		edist = Math.sqrt(Math.pow((b.x-a.x), 2) + Math.pow((b.y-a.y),2));
-		System.out.println("Euclidean distance between " + a + " and " + b + " is " + edist);
+		//System.out.println("Euclidean distance between " + a + " and " + b + " is " + edist);
 		return edist; 
 	}
 	
-	public static boolean checkconvergence(int iter_count) throws Exception{
-		return true;
-	}
+	public static boolean checkconvergence(int iter_count, int k) throws Exception{
+		//Convergence can either be by iteration count or when previous and current centers are below threshold change.
+		if (iter_count == 10){
+			return true;
+		}
+		else {
+			/*
+			int index = 0;
+			double edist = 0.0;
+			while (index < k){
+				//System.out.println("Index is " + index + " k value is " + k);
+				if (newkCentroids.isEmpty() == false){
+					edist = Euclideandistance(kCentroids.get(index),newkCentroids.get(index));
+					if (edist <= 0.1){
+						return true;
+					}
+					}
+				index++;
+				}
+				*/
+			}
+		return false;
+		}
+
 }
