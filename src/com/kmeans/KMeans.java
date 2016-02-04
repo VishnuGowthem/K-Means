@@ -17,7 +17,7 @@ import org.apache.hadoop.mapred.*;
 
 @SuppressWarnings("deprecation")
 public class KMeans {
-	public static Map<Datapoint, List<Datapoint>> output = new HashMap<Datapoint, List<Datapoint>>();
+	//public static Map<Datapoint, List<Datapoint>> output = new HashMap<Datapoint, List<Datapoint>>();
 	public static List<Datapoint> data = new ArrayList<Datapoint>();
 	public static List<Datapoint> kCentroids = new ArrayList<Datapoint>();
 	public static List<Datapoint> newkCentroids = new ArrayList<Datapoint>();
@@ -40,7 +40,7 @@ public class KMeans {
 			if (iter_count == 0)
 			{
 				// Instead of giving centers as input, have taken them from the data file.
-				initialize(input_folder, k_value);
+				//initialize(input_folder, k_value);
 				// Centroids file uploaded to hdfs. Will Overwrite any existing copy.
 				Path hdfspath = new Path(input_folder + centroidsfile);
 				DistributedCache.addCacheFile(hdfspath.toUri(), conf);
@@ -66,6 +66,24 @@ public class KMeans {
 			
 			conf.setJobName("KMeans");
 			
+			conf.setMapOutputKeyClass(Datapoint.class);
+			conf.setMapOutputValueClass(Datapoint.class);
+			conf.setOutputKeyClass(Datapoint.class);
+			conf.setOutputValueClass(Datapoint.class);
+			
+			conf.setMapperClass(Map.class);
+			conf.setCombinerClass(Reduce.class);
+			conf.setReducerClass(Reduce.class);
+			
+			conf.setInputFormat(TextInputFormat.class);
+			conf.setOutputFormat(TextOutputFormat.class);
+			
+			FileInputFormat.setInputPaths(conf, new Path(input_folder + datafile));	
+			FileOutputFormat.setOutputPath(conf, new Path(input_folder + outputfile));
+			
+			JobClient.runJob(conf);
+			
+			//Path ofile = new Path ()
 			//System.out.println("Computing new Centroids");
 			//computenewcentroids(input_folder, k_value, iter_count, false);
 			//System.out.println("kCentroids are " + kCentroids);
@@ -86,7 +104,8 @@ public class KMeans {
 			*/
 		}
 	}
-	
+
+/*	
 	// Method stores all data points to data ArrayList. 
 	// Also Random data points are chosen as centroids to kCentroids ArrayList for the first iteration.
 	public void initialize(String input_folder, int k) throws Exception{
@@ -163,5 +182,29 @@ public class KMeans {
 		writer.close();
 		//System.out.println("kCentroids are " + kCentroids);
 		//System.out.println("newKCentroids are " + newkCentroids);
+	}
+}
+*/
+	public static class Map extends MapReduceBase implements Mapper<LongWritable, Text, Datapoint, Datapoint> {
+	
+	@Override
+	public void map(LongWritable key, Text value, OutputCollector<Datapoint, Datapoint> output,
+			Reporter reporter) throws IOException {
+		
+	}
+	
+	@Override
+	public void configure(JobConf job){
+		
+	}
+}
+	public static class Reduce extends MapReduceBase implements
+	Reducer<Datapoint, Datapoint, Datapoint, Text> {
+		@Override
+		public void reduce(Datapoint key, Iterator<Datapoint> values,
+				OutputCollector<Datapoint, Text> output, Reporter reporter)
+				throws IOException {
+			
+		}
 	}
 }
