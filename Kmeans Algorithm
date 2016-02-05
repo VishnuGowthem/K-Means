@@ -17,7 +17,11 @@ K-Means Algorithm in Map Reduce :
 Extending the same algorithm in Map Reduce, the following steps need to be done.
 
 1. Map Reduce Job configurations are to be made.
-2. Configurations include 
+	- Add Distributed file paths.
+	- Set Output class, Map Output Class, for Key and Value to be emitted from Mapper to Reducer.
+	- Set Inputformat, Outputformat (Using textformat currently but can be done with csv files as well)
+	
+2. Mapper Functionalities to be implemented.
 
 Mapper :
 Mapper Reads centroid files from distributed system.
