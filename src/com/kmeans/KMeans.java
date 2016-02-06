@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.*;
 import java.io.*;
 
@@ -15,196 +14,217 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapred.*;
 
-@SuppressWarnings("deprecation")
 public class KMeans {
-	//public static Map<Datapoint, List<Datapoint>> output = new HashMap<Datapoint, List<Datapoint>>();
-	public static List<Datapoint> data = new ArrayList<Datapoint>();
+	
+	/* Global Configurations */
+	// Default folders maybe specified here
+	public static String output_folder = "";
+	public static String input_folder = "";
+	
+	// Input data file and centroids file
+	public static String datafile = "/data.txt";
+	public static String centroidsfile = "/centroid.txt";
+	
+	// Named in standard part-nnnn format for mapreduce configurations
+	public static String outputfile = "/part-00000";
+	
+	// Delimiter to distinguish center points
+	public static String delimiter = "\t| ";
+	
+	// List of datapoints to store centroids
 	public static List<Datapoint> kCentroids = new ArrayList<Datapoint>();
-	public static List<Datapoint> newkCentroids = new ArrayList<Datapoint>();
-	public static String datafile = "/data.csv";
-	public static String centroidsfile = "/centroid";
-	public static String outputfile = "/output";
 	
-	public void main(String[] args)throws Exception {
-		kmeans(args);
+	/* Main Class */
+	public static void main(String[] args) throws Exception {
+		kMeans(args);
 	}
-	
-	public void kmeans(String[] args) throws Exception {
-		String input_folder = args[0]; //DataSet File Path
-		int k_value = Integer.parseInt(args[1]); //K-Value for current execution
-		
+
+	/* KMeans Method */
+	public static void kMeans(String[] args) throws Exception {
+		input_folder = args[0];
+		output_folder = args[1];
 		int iter_count = 0;
 		boolean converged = false;
-		while(true){
+		String previous = "";
+		
+		// Because for subsequent runs different folder names have to be specified.
+		String output = output_folder + System.nanoTime();
+		
+		// Input for iterations after the first.
+		String input = output;
+
+		// Iterating Till Convergence.
+		while (converged == false) {
 			JobConf conf = new JobConf(KMeans.class);
-			if (iter_count == 0)
-			{
-				// Instead of giving centers as input, have taken them from the data file.
-				//initialize(input_folder, k_value);
-				// Centroids file uploaded to hdfs. Will Overwrite any existing copy.
-				Path hdfspath = new Path(input_folder + centroidsfile);
-				DistributedCache.addCacheFile(hdfspath.toUri(), conf);
-				//System.out.println("Calling clustering " + iter_count);
-				//clustering(input_folder, iter_count);
+			if (iter_count == 0) {
+				// So we use the centroids file for first iteration and output file of previous iterations for subsequent iterations.
+				Path hdfsPath = new Path(input_folder + centroidsfile);
+				// Uploading file to HDFS distributed system.
+				DistributedCache.addCacheFile(hdfsPath.toUri(), conf);
+			} else {
+				Path hdfsPath = new Path(input + outputfile);
+				// Uploading file to HDFS distributed system.
+				DistributedCache.addCacheFile(hdfsPath.toUri(), conf);
 			}
-			else
-			{
-				Path hdfspath = new Path(input_folder + outputfile);
-				DistributedCache.addCacheFile(hdfspath.toUri(), conf);
-				//System.out.println("kCentroids are " + kCentroids);
-				//kCentroids = newkCentroids;
-				//kCentroids.clear();
-				//int index = 0;
-				//while(index < newkCentroids.size()){
-					//kCentroids.add(index, newkCentroids.get(index));
-					//index++;
-				//}
-				//System.out.println("KCentroids before clustering are " + kCentroids);
-				//System.out.println("Calling clustering " + iter_count);
-				//clustering(input_folder, iter_count);	
-			}
-			
+
+			// Jobconf configurations.s
 			conf.setJobName("KMeans");
 			
+			// Mapper configurations
+			conf.setMapperClass(Map.class);
 			conf.setMapOutputKeyClass(Datapoint.class);
 			conf.setMapOutputValueClass(Datapoint.class);
-			conf.setOutputKeyClass(Datapoint.class);
-			conf.setOutputValueClass(Datapoint.class);
 			
-			conf.setMapperClass(Map.class);
-			conf.setCombinerClass(Reduce.class);
+			//Reducer configurations.
 			conf.setReducerClass(Reduce.class);
 			
+			// Input/Output configurations
 			conf.setInputFormat(TextInputFormat.class);
+			conf.setOutputKeyClass(Datapoint.class);
+			conf.setOutputValueClass(Text.class);
 			conf.setOutputFormat(TextOutputFormat.class);
-			
-			FileInputFormat.setInputPaths(conf, new Path(input_folder + datafile));	
-			FileOutputFormat.setOutputPath(conf, new Path(input_folder + outputfile));
-			
+
+			// Setting Input file (Data file path)
+			FileInputFormat.setInputPaths(conf,
+					new Path(input_folder + datafile));
+			FileOutputFormat.setOutputPath(conf, new Path(output));
+
+			//Command to run Job
 			JobClient.runJob(conf);
+
+			// Outputfile path
+			Path outflie_path = new Path(output + outputfile);
 			
-			//Path ofile = new Path ()
-			//System.out.println("Computing new Centroids");
-			//computenewcentroids(input_folder, k_value, iter_count, false);
-			//System.out.println("kCentroids are " + kCentroids);
-			//System.out.println("newKCentroids are " + newkCentroids);
-			//System.out.println("Calling checkconvergence");
-			/*
-			converged = checkconvergence(iter_count, k_value);
-			if (converged != true)
-			{
-				iter_count++;
-				//output.clear();	
+			// Write to outputfile after each iteration.
+			FileSystem fs = FileSystem.get(new Configuration());
+			BufferedReader br = new BufferedReader(new InputStreamReader(
+					fs.open(outflie_path)));
+			List<Double> centers_next = new ArrayList<Double>();
+			String line = br.readLine();
+			while (line != null) {
+				String[] sp = line.split("\t| ");
+				double c = Double.parseDouble(sp[0]);
+				centers_next.add(c);
+				line = br.readLine();
 			}
-			else
-			{
-				System.out.println("Done Clustering. \nKindly check files numbered output0,output1.. for results in " + input_folder);
-				break;
+			br.close();
+
+			//Checking convergence
+			if (iter_count == 0) {
+				previous = input_folder + centroidsfile;
+			} else {
+				previous = input + outputfile;
 			}
-			*/
-		}
-	}
-
-/*	
-	// Method stores all data points to data ArrayList. 
-	// Also Random data points are chosen as centroids to kCentroids ArrayList for the first iteration.
-	public void initialize(String input_folder, int k) throws Exception{
-		BufferedReader in = null;
-		String line = "";
-		String cvsdelimiter = ",";
-		String csvfile = input_folder + datafile;
-		
-		try {
-			in = new BufferedReader(new FileReader(csvfile));
-			while ((line = in.readLine()) != null) {
-
-		        // use comma as separator
-			String[] temp = line.split(cvsdelimiter);
-
-			Datapoint temppoint = new Datapoint(Double.parseDouble(temp[0]),Double.parseDouble(temp[1]));
-			data.add(temppoint);
-			//System.out.println(data);
+			Path prevfile = new Path(previous);
+			FileSystem fs1 = FileSystem.get(new Configuration());
+			BufferedReader br1 = new BufferedReader(new InputStreamReader(
+					fs1.open(prevfile)));
+			List<Double> centers_prev = new ArrayList<Double>();
+			String l = br1.readLine();
+			while (l != null) {
+				String[] sp1 = l.split(delimiter);
+				double d = Double.parseDouble(sp1[0]);
+				centers_prev.add(d);
+				l = br1.readLine();
 			}
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		} finally {
-			if (in != null) {
-				try {
-					in.close();
-				} catch (IOException e) {
-					e.printStackTrace();
+			br1.close();
+
+			// Convergence check done.
+			Collections.sort(centers_next);
+			Collections.sort(centers_prev);
+
+			Iterator<Double> it = centers_prev.iterator();
+			for (double d : centers_next) {
+				double temp = it.next();
+				if (Math.abs(temp - d) <= 0.1) {
+					converged = true;
+				} else {
+					converged = false;
+					break;
 				}
 			}
+			++iter_count;
+			
+			// Setting up future iterations.
+			input = output;
+			output = output_folder + System.nanoTime();
 		}
-		computenewcentroids(input_folder, k, 0, true);
-	}
+	}	
 	
-	// Method to compute centroids during several iterations
-	public void computenewcentroids(String input_folder, int k, int iter_count, boolean random) throws Exception{
-		int length = data.size();
-		int centroidcount = 0;
-		int temp = 0;
-		String centroidfile = input_folder + centroidsfile + iter_count;
-		PrintWriter writer = new PrintWriter(centroidfile, "UTF-8");
-		if (random == true){
-			kCentroids.clear();
-			// Centroids are computed for the first time. 
-			// Its enough if widely spaced random data points are picked as Centroids.
-			while (centroidcount < k) {
-				kCentroids.add(data.get(temp));
-				writer.println(centroidcount + "|" + data.get(temp));
-				temp = temp + length/k;
-				centroidcount++;
-				}
-		}
-		else {
-			newkCentroids.clear();
-			// Centroids are calculated as mean of all data points.
-			for (Datapoint center: kCentroids){
-				//System.out.println("center value is " + center);
-				int valuescount = 0;
-				Datapoint sum = new Datapoint(0.0,0.0);
-				for (Datapoint point:output.get(center)){
-					sum.x = sum.x + point.x;
-					sum.y = sum.y + point.y;
-					valuescount++;
-				}
-				//System.out.println("Sum x is " + sum.x + " Sum y is " + sum.y);
-				//System.out.println("Values count is " + valuescount);
-				Datapoint newcentroid = new Datapoint(sum.x/valuescount, sum.y/valuescount);
-				newkCentroids.add(newcentroid);
-				writer.println(centroidcount + "|" + newcentroid);
-				centroidcount++;
-			}
-		}
-		writer.close();
-		//System.out.println("kCentroids are " + kCentroids);
-		//System.out.println("newKCentroids are " + newkCentroids);
-	}
-}
-*/
+
+	/* Map Reduce Methods */
+	/* We need to override the configure function in the mapper class.
+	 * The idea is to have kCentroids Array list populated with centroids value.
+	 * The values are read from the centroids file(for 1st iteration) and output file(for subsequent iterations)
+	 * The input files are got from the Distributed cache files, set earlier in KMeans method.
+	 */
 	public static class Map extends MapReduceBase implements Mapper<LongWritable, Text, Datapoint, Datapoint> {
-	
-	@Override
-	public void map(LongWritable key, Text value, OutputCollector<Datapoint, Datapoint> output,
-			Reporter reporter) throws IOException {
-		
-	}
-	
-	@Override
-	public void configure(JobConf job){
-		
+
+		/* Configure is basically modified from the initialize function in SimpleKMeans implementation */
+		@Override
+		public void configure(JobConf job) {
+			try {
+				String cvsdelimiter = ",";
+				// Read from distributed cache files.
+				Path[] cacheFiles = DistributedCache.getLocalCacheFiles(job);
+				if (cacheFiles != null && cacheFiles.length > 0) {
+					String line = "";
+					BufferedReader in = null;
+					kCentroids.clear();
+					try {
+						in = new BufferedReader(new FileReader(cacheFiles[0].toString()));
+						while ((line = in.readLine()) != null) {
+
+					    // use comma as separator as there are x,y values
+						String[] temp = line.split(cvsdelimiter);
+
+						Datapoint temppoint = new Datapoint(Double.parseDouble(temp[0]),Double.parseDouble(temp[1]));
+						kCentroids.add(temppoint);
+						//System.out.println(kCentrois);
+						}
+					} catch (FileNotFoundException e) {
+						e.printStackTrace();
+					} catch (IOException e) {
+						e.printStackTrace();
+					} finally {
+						if (in != null) {
+							try {
+								in.close();
+							} catch (IOException e) {
+								e.printStackTrace();
+							}
+						}
+					}
+				}
+			} catch (IOException e) {
+				System.err.println("Exception reading DistribtuedCache: " + e);
+			}
+		}
+
+		/* After Configurations, the Map function now reads the points and
+		 * will be able to find the nearest center to the point and emit it to
+		 * the reducer. <Center, point> <Key, values> are emitted to the reducer.
+		 */
+		@Override
+		public void map(LongWritable key, Text value,
+				OutputCollector<Datapoint, Datapoint> output,
+				Reporter reporter) throws IOException {
+
 	}
 }
+	
 	public static class Reduce extends MapReduceBase implements
-	Reducer<Datapoint, Datapoint, Datapoint, Text> {
+			Reducer<DoubleWritable, DoubleWritable, DoubleWritable, Text> {
+
+		/*
+		 * Reduce function will emit all the points to that center and calculate
+		 * the next center for these points
+		 */
 		@Override
-		public void reduce(Datapoint key, Iterator<Datapoint> values,
-				OutputCollector<Datapoint, Text> output, Reporter reporter)
+		public void reduce(DoubleWritable key, Iterator<DoubleWritable> values,
+				OutputCollector<DoubleWritable, Text> output, Reporter reporter)
 				throws IOException {
-			
+
 		}
 	}
 }
