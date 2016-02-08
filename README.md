@@ -3,10 +3,12 @@ Implementation of K Means in Map Reduce
 
 Workflow :
 ==========
--> Simple K Means inmplementation 
--> Hadoop Installation
--> KMeans Implementation in MapReduce
--> Testing and Validation
+* Simple K Means inmplementation
+* Hadoop Installation
+* KMeans Implementation in MapReduce
+* Testing and Validation
+
+(Check Workflow pdf)
 
 Simple K-Means Algorithm :
 ===========================
@@ -30,7 +32,7 @@ Extending the same algorithm in Map Reduce, the following steps need to be done.
 	- Set Output class, Map Output Class, for Key and Value to be emitted from Mapper to Reducer.
 	- Set Inputformat, Outputformat (Using textformat currently but can be done with csv files as well)
 	
-2. Mapper Functionalities to be implemented.
+2. Mapper Functionalities implemented.
 
 Mapper :
 Mapper Reads centroid files from distributed system.
@@ -40,3 +42,10 @@ Also for the initial iteration centroids are to be given whereas in future itera
 Reducer :
 Reducer collects the (center,point) from the mapper and sends it to the centers.
 Calculates the new center for subsequent iteration and writes it to the output file, which are used as centroids file in future iterations.
+
+Future Work :
+==============
+
+* Script to run for different k values and gather output.
+* Python Script to visualize output
+* Automate/Integrate all works 
