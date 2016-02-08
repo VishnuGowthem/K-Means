@@ -4,20 +4,7 @@ import java.io.IOException;
 import java.util.*;
 import java.io.*;
 
-class Datapoint{
-	double x;
-	double y;
-	
-	public Datapoint(final double x, final double y) {
-		this.x = x;
-		this.y = y;
-	}
-	
-	@Override
-	public String toString() {
-		return "" + x + "," + y;
-	}
-}
+
 
 public class SimpleKMeans {
 	

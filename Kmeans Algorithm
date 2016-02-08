@@ -30,4 +30,4 @@ Also for the initial iteration centroids are to be given whereas in future itera
 
 Reducer :
 Reducer collects the (center,point) from the mapper and sends it to the centers.
-Calculates the new center for subsequent iteration and writes it to the centroids file.
+Calculates the new center for subsequent iteration and writes it to the output file, which are used as centroids file in future iterations.

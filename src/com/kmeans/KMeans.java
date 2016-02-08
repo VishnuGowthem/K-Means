@@ -14,6 +14,72 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapred.*;
 
+class Datapoint implements WritableComparable<Datapoint> {
+	double x;
+	double y;
+	
+	public Datapoint() {
+		super();
+	}
+	
+	public Datapoint(double x, double y) {
+		super();
+		this.x = x;
+		this.y = y;
+	}
+	
+	public Datapoint(Datapoint point) {
+		super();
+		this.x = point.x;
+		this.y = point.y;
+		// TODO Auto-generated constructor stub
+	}
+
+	public double getX() {
+		// TODO Auto-generated method stub
+		return this.x;
+	}
+	
+	public double getY() {
+		// TODO Auto-generated method stub
+		return this.y;
+	}
+	
+	@Override
+	public String toString() {
+		return "" + x + "," + y;
+	}
+
+	public Datapoint get() {
+		// TODO Auto-generated method stub
+		return this;
+	}
+	
+	 @Override
+	 public void write(DataOutput out) throws IOException {
+	  out.writeInt(2);
+	  out.writeDouble(this.x);
+	  out.writeDouble(this.y);
+	 }
+	 
+	 @Override
+	 public void readFields(DataInput in) throws IOException {
+	  //int size = in.readInt();
+	  this.x = in.readDouble();
+	  this.y = in.readDouble();
+	 }
+	
+	 @Override
+	 public int compareTo(Datapoint a) {
+	 
+	  //boolean equals = true;
+	  if ((this.x == a.x) && (this.y == a.y)){
+		  return 0;
+	  }
+	  return 1;
+	 }
+}
+
 public class KMeans {
 	
 	/* Global Configurations */
@@ -28,8 +94,11 @@ public class KMeans {
 	// Named in standard part-nnnn format for mapreduce configurations
 	public static String outputfile = "/part-00000";
 	
-	// Delimiter to distinguish center points
+	// Delimiter to distinguish center and other points
 	public static String delimiter = "\t| ";
+	
+	// Delimiter to distinguish x and y of x,y points
+	public static String cvsdelimiter = ",";
 	
 	// List of datapoints to store centroids
 	public static List<Datapoint> kCentroids = new ArrayList<Datapoint>();
@@ -47,7 +116,7 @@ public class KMeans {
 		boolean converged = false;
 		String previous = "";
 		
-		// Because for subsequent runs different folder names have to be specified.
+		// Because for subsequent Iterations different folder names have to be specified.
 		String output = output_folder + System.nanoTime();
 		
 		// Input for iterations after the first.
@@ -79,9 +148,10 @@ public class KMeans {
 			conf.setReducerClass(Reduce.class);
 			
 			// Input/Output configurations
+			//conf.setOutputKeyComparatorClass(Datapoint.class);
 			conf.setInputFormat(TextInputFormat.class);
 			conf.setOutputKeyClass(Datapoint.class);
-			conf.setOutputValueClass(Text.class);
+			conf.setOutputValueClass(Datapoint.class);
 			conf.setOutputFormat(TextOutputFormat.class);
 
 			// Setting Input file (Data file path)
@@ -93,47 +163,59 @@ public class KMeans {
 			JobClient.runJob(conf);
 
 			// Outputfile path
-			Path outflie_path = new Path(output + outputfile);
+			Path outfile_path = new Path(output + outputfile);
 			
-			// Write to outputfile after each iteration.
-			FileSystem fs = FileSystem.get(new Configuration());
-			BufferedReader br = new BufferedReader(new InputStreamReader(
-					fs.open(outflie_path)));
-			List<Double> centers_next = new ArrayList<Double>();
-			String line = br.readLine();
+			List<Datapoint> centers_next = construct_Datapointlist(outfile_path);
+			
+			/*
+			// Read Outputfile and get centroids value
+			FileSystem outfs = FileSystem.get(new Configuration());
+			BufferedReader outreader = new BufferedReader(new InputStreamReader(outfs.open(outfile_path)));
+			List<Datapoint> centers_next = new ArrayList<Datapoint>();
+			String line = outreader.readLine();
 			while (line != null) {
-				String[] sp = line.split("\t| ");
-				double c = Double.parseDouble(sp[0]);
-				centers_next.add(c);
-				line = br.readLine();
+				String[] temp2 = line.split(delimiter);
+				String[] temp = temp2[1].split(",");
+				Datapoint current = new Datapoint(Double.parseDouble(temp[0]),Double.parseDouble(temp[1]));
+				centers_next.add(current);
+				line = outreader.readLine();
 			}
-			br.close();
-
+			outreader.close();
+			*/
+			
 			//Checking convergence
 			if (iter_count == 0) {
 				previous = input_folder + centroidsfile;
 			} else {
 				previous = input + outputfile;
 			}
-			Path prevfile = new Path(previous);
-			FileSystem fs1 = FileSystem.get(new Configuration());
-			BufferedReader br1 = new BufferedReader(new InputStreamReader(
-					fs1.open(prevfile)));
-			List<Double> centers_prev = new ArrayList<Double>();
-			String l = br1.readLine();
-			while (l != null) {
-				String[] sp1 = l.split(delimiter);
-				double d = Double.parseDouble(sp1[0]);
-				centers_prev.add(d);
-				l = br1.readLine();
+			Path prevfile_path = new Path(previous);
+			List<Datapoint> centers_current = construct_Datapointlist(prevfile_path);
+			int k = centers_current.size();
+			
+			/*
+			FileSystem prevfs = FileSystem.get(new Configuration());
+			BufferedReader curreader = new BufferedReader(new InputStreamReader(prevfs.open(prevfile)));
+			List<Datapoint> centers_prev = new ArrayList<Datapoint>();
+			String line2 = curreader.readLine();
+			while (line2 != null) {
+				String[] temp2 = line.split(delimiter);
+				String[] temp = temp2[1].split(",");
+				Datapoint current = new Datapoint(Double.parseDouble(temp[0]),Double.parseDouble(temp[1]));
+				centers_prev.add(current);
+				line2 = curreader.readLine();
 			}
-			br1.close();
+			curreader.close();
+			*/
 
+			/*
 			// Convergence check done.
-			Collections.sort(centers_next);
-			Collections.sort(centers_prev);
+			//Collections.sort(centers_next);
+			//Collections.sort(centers_prev);
 
-			Iterator<Double> it = centers_prev.iterator();
+			
+			//converged = checkconvergence(iter_count, k_value);
+			Iterator<Double> it = centers_current.iterator();
 			for (double d : centers_next) {
 				double temp = it.next();
 				if (Math.abs(temp - d) <= 0.1) {
@@ -143,15 +225,67 @@ public class KMeans {
 					break;
 				}
 			}
+			*/
+			
+			// Convergence check
+			converged = checkconvergence(centers_current, centers_next, iter_count, k);
 			++iter_count;
 			
 			// Setting up future iterations.
 			input = output;
 			output = output_folder + System.nanoTime();
 		}
+		
 	}	
 	
+	public static List<Datapoint> construct_Datapointlist(Path filepath) throws Exception{  
+		FileSystem filesystem = FileSystem.get(new Configuration());
+		BufferedReader reader = new BufferedReader(new InputStreamReader(filesystem.open(filepath)));
+		List<Datapoint> center = new ArrayList<Datapoint>();
+		String line = reader.readLine();
+		while (line != null) {
+			String[] temp2 = line.split(delimiter);
+			String[] temp = temp2[1].split(cvsdelimiter);
+			Datapoint current = new Datapoint(Double.parseDouble(temp[0]),Double.parseDouble(temp[1]));
+			center.add(current);
+			line = reader.readLine();
+		}
+		reader.close();
+		return center;
+	}
 
+	
+	public static boolean checkconvergence(List<Datapoint> centers_current, List<Datapoint> centers_next, int iter_count, int k) throws Exception{
+		//Convergence done by iteration count 
+		if (iter_count == 0){
+			return true;
+		}
+		else {
+			// Convergence by checking previous and current centers
+			int index = 0;
+			double edist = 0.0;
+			while (index != k){
+				//System.out.println("Index is " + index + " k value is " + k);
+				if ((centers_current.isEmpty() == false) && (centers_next.isEmpty() == false)){
+					edist = Euclideandistance(centers_current.get(index),centers_next.get(index));
+					if (edist != 0.0){
+						return false;
+						}
+					}
+				index++;
+				}
+			}
+		return true;
+		}
+
+	public static double Euclideandistance(Datapoint a, Datapoint b) throws IOException{
+		// Euclidean distance between two points a(x1,y1) and b(x2,y2) is d(a,b) = squareroot[(x2-x1)^2 + (y2-y1)^2]
+		double edist = 0.0;
+		edist = Math.sqrt(Math.pow((b.x-a.x), 2) + Math.pow((b.y-a.y),2));
+		//System.out.println("Euclidean distance between " + a + " and " + b + " is " + edist);
+		return edist; 
+	}
+	
 	/* Map Reduce Methods */
 	/* We need to override the configure function in the mapper class.
 	 * The idea is to have kCentroids Array list populated with centroids value.
@@ -164,7 +298,7 @@ public class KMeans {
 		@Override
 		public void configure(JobConf job) {
 			try {
-				String cvsdelimiter = ",";
+				
 				// Read from distributed cache files.
 				Path[] cacheFiles = DistributedCache.getLocalCacheFiles(job);
 				if (cacheFiles != null && cacheFiles.length > 0) {
@@ -176,7 +310,9 @@ public class KMeans {
 						while ((line = in.readLine()) != null) {
 
 					    // use comma as separator as there are x,y values
-						String[] temp = line.split(cvsdelimiter);
+						String[] temp2 = line.split(delimiter);
+						
+						String[] temp = temp2[1].split(cvsdelimiter);
 
 						Datapoint temppoint = new Datapoint(Double.parseDouble(temp[0]),Double.parseDouble(temp[1]));
 						kCentroids.add(temppoint);
@@ -197,7 +333,7 @@ public class KMeans {
 					}
 				}
 			} catch (IOException e) {
-				System.err.println("Exception reading DistribtuedCache: " + e);
+				System.err.println("Exception reading DistributedCache: " + e);
 			}
 		}
 
@@ -205,26 +341,66 @@ public class KMeans {
 		 * will be able to find the nearest center to the point and emit it to
 		 * the reducer. <Center, point> <Key, values> are emitted to the reducer.
 		 */
-		@Override
-		public void map(LongWritable key, Text value,
-				OutputCollector<Datapoint, Datapoint> output,
-				Reporter reporter) throws IOException {
+		 @Override
+		 public void map(LongWritable key, Text value,
+		     OutputCollector<Datapoint, Datapoint> output,
+		     Reporter reporter) throws IOException {
+		   String line = value.toString();
+		   String cvsdelimiter = ",";
+		   String []temp = line.split(cvsdelimiter);
+		   Datapoint point = new Datapoint(Double.parseDouble(temp[0]),Double.parseDouble(temp[1]));
+		   double mindist = Double.MAX_VALUE;
+		   double newdist = Double.MAX_VALUE;
+		   Datapoint nearest_center = kCentroids.get(0);
+		   // Finding the minimum center for a point
+			for (Datapoint center: kCentroids){
+				newdist = Euclideandistance(point, center);
+				//System.out.println("prevnearestcenter : "+nearestcenter);
+				//System.out.println("mindist : " + mindist);
+				//System.out.println("newdist : " + newdist);
+				if (Math.abs(newdist) < Math.abs(mindist)){
+					mindist = newdist;
+					nearest_center = center;
+					//centerindex = kCentroids.indexOf(center);
+				}
+			}
+		   
+		   // Emit the nearest center and the point
+		   output.collect(new Datapoint(nearest_center), new Datapoint(point));
+		   //output.collect(nearest_center, point);
+		 }
+		}
 
-	}
-}
 	
 	public static class Reduce extends MapReduceBase implements
-			Reducer<DoubleWritable, DoubleWritable, DoubleWritable, Text> {
+			Reducer<Datapoint, Datapoint, Datapoint, Text> {
 
 		/*
 		 * Reduce function will emit all the points to that center and calculate
 		 * the next center for these points
 		 */
-		@Override
-		public void reduce(DoubleWritable key, Iterator<DoubleWritable> values,
-				OutputCollector<DoubleWritable, Text> output, Reporter reporter)
-				throws IOException {
+		 @Override
+		 public void reduce(Datapoint key, Iterator<Datapoint> values,
+		     OutputCollector<Datapoint, Text> output, Reporter reporter)
+		     throws IOException {
+		   Datapoint newCenter = new Datapoint(0.0,0.0);
+		   Datapoint sum = new Datapoint(0.0,0.0);
+		   int count = 0;
+		   String points = "";
+		   while (values.hasNext()) {
+		     Datapoint d = values.next().get();
+		     points = points + " " + d.toString();
+		     sum.x = sum.x + d.x;
+		     sum.y = sum.y + d.y;
+		     ++count;
+		   }
 
-		}
+		   // Calculation of new Center
+		   newCenter.x = sum.x / count;
+		   newCenter.y = sum.y / count;
+
+		   // Emit the new center and point
+		   output.collect(new Datapoint(newCenter), new Text(points));
+		 }
 	}
 }
