@@ -43,6 +43,24 @@ Reducer :
 Reducer collects the (center,point) from the mapper and sends it to the centers.
 Calculates the new center for subsequent iteration and writes it to the output file, which are used as centroids file in future iterations.
 
+Dependent jars needed for Kmeans-MapReduce :
+=============================================
+1.hadoop-core-1.2.1.jar
+2.org.apache.commons.httpclient.jar
+3.apache-commons-lang.jar
+4.com.springsource.org.codehaus.jackson-1.4.2.jar
+5.com.springsource.org.codehaus.jackson.mapper-1.4.2.jar
+6.commons-configuration-1.7.jar
+7.commons-io-2.4.jar
+8.commons-logging-1.1.1.jar
+
+Some of the above jars might not be needed as I was trying different things during the course of the project.
+
+Run time Arguments :
+===================
+Specify the input_folder as args[0] and output_folder as args[1] as run time arguments 
+
+
 Future Work :
 ==============
 
