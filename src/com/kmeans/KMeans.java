@@ -150,8 +150,8 @@ public class KMeans {
 			// Input/Output configurations
 			//conf.setOutputKeyComparatorClass(Datapoint.class);
 			conf.setInputFormat(TextInputFormat.class);
-			conf.setOutputKeyClass(Datapoint.class);
-			conf.setOutputValueClass(Datapoint.class);
+			conf.setOutputKeyClass(Text.class);
+			conf.setOutputValueClass(Text.class);
 			conf.setOutputFormat(TextOutputFormat.class);
 
 			// Setting Input file (Data file path)
@@ -347,7 +347,8 @@ public class KMeans {
 		     Reporter reporter) throws IOException {
 		   String line = value.toString();
 		   String cvsdelimiter = ",";
-		   String []temp = line.split(cvsdelimiter);
+			String[] temp2 = line.split(delimiter);
+			String[] temp = temp2[1].split(cvsdelimiter);
 		   Datapoint point = new Datapoint(Double.parseDouble(temp[0]),Double.parseDouble(temp[1]));
 		   double mindist = Double.MAX_VALUE;
 		   double newdist = Double.MAX_VALUE;
@@ -373,7 +374,7 @@ public class KMeans {
 
 	
 	public static class Reduce extends MapReduceBase implements
-			Reducer<Datapoint, Datapoint, Datapoint, Text> {
+			Reducer<Datapoint, Datapoint, Text, Text> {
 
 		/*
 		 * Reduce function will emit all the points to that center and calculate
@@ -381,7 +382,7 @@ public class KMeans {
 		 */
 		 @Override
 		 public void reduce(Datapoint key, Iterator<Datapoint> values,
-		     OutputCollector<Datapoint, Text> output, Reporter reporter)
+		     OutputCollector<Text, Text> output, Reporter reporter)
 		     throws IOException {
 		   Datapoint newCenter = new Datapoint(0.0,0.0);
 		   Datapoint sum = new Datapoint(0.0,0.0);
@@ -398,9 +399,10 @@ public class KMeans {
 		   // Calculation of new Center
 		   newCenter.x = sum.x / count;
 		   newCenter.y = sum.y / count;
+		   String ncenter = newCenter.toString();
 
 		   // Emit the new center and point
-		   output.collect(new Datapoint(newCenter), new Text(points));
+		   output.collect(new Text(ncenter), new Text(points));
 		 }
 	}
 }
