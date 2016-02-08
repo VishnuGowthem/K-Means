@@ -245,13 +245,13 @@ public class KMeans {
 		String line = reader.readLine();
 		
 		while (line != null) {
-			System.out.println("Reading line " + line);
+			//System.out.println("Reading line " + line);
 			String[] temp2 = line.split(delimiter);
 			//System.out.println(temp2[0]);
 			//System.out.println(temp2[2]);
 			String[] temp = temp2[0].split(cvsdelimiter);
-			System.out.println(temp[0]);
-			System.out.println(temp[1]);
+			//System.out.println(temp[0]);
+			//System.out.println(temp[1]);
 			Datapoint current = new Datapoint(Double.parseDouble(temp[0]),Double.parseDouble(temp[1]));
 			center.add(current);
 			line = reader.readLine();
@@ -262,7 +262,7 @@ public class KMeans {
 
 	
 	public static boolean checkconvergence(List<Datapoint> centers_current, List<Datapoint> centers_next, int iter_count, int k) throws Exception{
-		//Convergence done by iteration count 
+		//Convergence done by iteration count - Set as 10 for now. Could be changed or removed
 		if (iter_count == 10){
 			return true;
 		}
@@ -288,7 +288,7 @@ public class KMeans {
 		// Euclidean distance between two points a(x1,y1) and b(x2,y2) is d(a,b) = squareroot[(x2-x1)^2 + (y2-y1)^2]
 		double edist = 0.0;
 		edist = Math.sqrt(Math.pow((b.x-a.x), 2) + Math.pow((b.y-a.y),2));
-		System.out.println("Euclidean distance between " + a + " and " + b + " is " + edist);
+		//System.out.println("Euclidean distance between " + a + " and " + b + " is " + edist);
 		return Math.abs(edist); 
 	}
 	
@@ -429,8 +429,8 @@ public class KMeans {
 		   // Calculation of new Center
 		   newCenter.x = sum.x / count;
 		   newCenter.y = sum.y / count;
-		   String ncenter = newCenter.toString();
-		   printString(ncenter);
+		   //String ncenter = newCenter.toString();
+		   //printString(ncenter);
 
 		   // Emit the new center and point
 		   output.collect(new Datapoint(newCenter), new Text(points));
