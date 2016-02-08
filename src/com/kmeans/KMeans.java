@@ -47,7 +47,7 @@ class Datapoint implements WritableComparable<Datapoint> {
 	
 	@Override
 	public String toString() {
-		return "" + x + "," + y;
+		return (this.x + "," + this.y);
 	}
 
 	public Datapoint get() {
@@ -141,8 +141,8 @@ public class KMeans {
 			
 			// Mapper configurations
 			conf.setMapperClass(Map.class);
-			conf.setMapOutputKeyClass(Datapoint.class);
-			conf.setMapOutputValueClass(Datapoint.class);
+			conf.setMapOutputKeyClass(Text.class);
+			conf.setMapOutputValueClass(Text.class);
 			
 			//Reducer configurations.
 			conf.setReducerClass(Reduce.class);
@@ -150,7 +150,7 @@ public class KMeans {
 			// Input/Output configurations
 			//conf.setOutputKeyComparatorClass(Datapoint.class);
 			conf.setInputFormat(TextInputFormat.class);
-			conf.setOutputKeyClass(Text.class);
+			conf.setOutputKeyClass(Datapoint.class);
 			conf.setOutputValueClass(Text.class);
 			conf.setOutputFormat(TextOutputFormat.class);
 
@@ -243,9 +243,15 @@ public class KMeans {
 		BufferedReader reader = new BufferedReader(new InputStreamReader(filesystem.open(filepath)));
 		List<Datapoint> center = new ArrayList<Datapoint>();
 		String line = reader.readLine();
+		
 		while (line != null) {
+			System.out.println("Reading line " + line);
 			String[] temp2 = line.split(delimiter);
-			String[] temp = temp2[1].split(cvsdelimiter);
+			//System.out.println(temp2[0]);
+			//System.out.println(temp2[2]);
+			String[] temp = temp2[0].split(cvsdelimiter);
+			System.out.println(temp[0]);
+			System.out.println(temp[1]);
 			Datapoint current = new Datapoint(Double.parseDouble(temp[0]),Double.parseDouble(temp[1]));
 			center.add(current);
 			line = reader.readLine();
@@ -257,7 +263,7 @@ public class KMeans {
 	
 	public static boolean checkconvergence(List<Datapoint> centers_current, List<Datapoint> centers_next, int iter_count, int k) throws Exception{
 		//Convergence done by iteration count 
-		if (iter_count == 0){
+		if (iter_count == 10){
 			return true;
 		}
 		else {
@@ -282,17 +288,34 @@ public class KMeans {
 		// Euclidean distance between two points a(x1,y1) and b(x2,y2) is d(a,b) = squareroot[(x2-x1)^2 + (y2-y1)^2]
 		double edist = 0.0;
 		edist = Math.sqrt(Math.pow((b.x-a.x), 2) + Math.pow((b.y-a.y),2));
-		//System.out.println("Euclidean distance between " + a + " and " + b + " is " + edist);
-		return edist; 
+		System.out.println("Euclidean distance between " + a + " and " + b + " is " + edist);
+		return Math.abs(edist); 
 	}
 	
+	// For Debugging as cant print values in MapReduce class
+	public static void printValues(Text values){
+		System.out.println("**** printValues *****");
+		System.out.println(values);
+	}
+	
+	public static void printStringarray(String[] sample){
+		System.out.println("**** printStringarray *****");
+		System.out.println(sample[0]);
+		//System.out.println(sample[1]);
+	}
+	
+	public static void printString(String sample){
+		System.out.println("**** printString *****");
+		System.out.println(sample);
+		//System.out.println(sample[1]);
+	}
 	/* Map Reduce Methods */
 	/* We need to override the configure function in the mapper class.
 	 * The idea is to have kCentroids Array list populated with centroids value.
 	 * The values are read from the centroids file(for 1st iteration) and output file(for subsequent iterations)
 	 * The input files are got from the Distributed cache files, set earlier in KMeans method.
 	 */
-	public static class Map extends MapReduceBase implements Mapper<LongWritable, Text, Datapoint, Datapoint> {
+	public static class Map extends MapReduceBase implements Mapper<LongWritable, Text, Text, Text> {
 
 		/* Configure is basically modified from the initialize function in SimpleKMeans implementation */
 		@Override
@@ -311,8 +334,9 @@ public class KMeans {
 
 					    // use comma as separator as there are x,y values
 						String[] temp2 = line.split(delimiter);
-						
-						String[] temp = temp2[1].split(cvsdelimiter);
+						//printString(temp2);
+						String[] temp = temp2[0].split(cvsdelimiter);
+						//printString(temp);
 
 						Datapoint temppoint = new Datapoint(Double.parseDouble(temp[0]),Double.parseDouble(temp[1]));
 						kCentroids.add(temppoint);
@@ -343,13 +367,15 @@ public class KMeans {
 		 */
 		 @Override
 		 public void map(LongWritable key, Text value,
-		     OutputCollector<Datapoint, Datapoint> output,
+		     //OutputCollector<Datapoint, Datapoint> output,
+				 OutputCollector<Text, Text> output,
 		     Reporter reporter) throws IOException {
 		   String line = value.toString();
 		   String cvsdelimiter = ",";
-			String[] temp2 = line.split(delimiter);
-			String[] temp = temp2[1].split(cvsdelimiter);
-		   Datapoint point = new Datapoint(Double.parseDouble(temp[0]),Double.parseDouble(temp[1]));
+			String[] temp = line.split(cvsdelimiter);
+			//String[] temp = temp2[1].split(cvsdelimiter);
+			//printString(temp);
+			Datapoint point = new Datapoint(Double.parseDouble(temp[0]),Double.parseDouble(temp[1]));
 		   double mindist = Double.MAX_VALUE;
 		   double newdist = Double.MAX_VALUE;
 		   Datapoint nearest_center = kCentroids.get(0);
@@ -367,29 +393,33 @@ public class KMeans {
 			}
 		   
 		   // Emit the nearest center and the point
-		   output.collect(new Datapoint(nearest_center), new Datapoint(point));
-		   //output.collect(nearest_center, point);
+		   //output.collect(new Datapoint(nearest_center), new Datapoint(point));
+		   output.collect(new Text(nearest_center.toString()), new Text(point.toString()));
 		 }
 		}
 
 	
 	public static class Reduce extends MapReduceBase implements
-			Reducer<Datapoint, Datapoint, Text, Text> {
+			Reducer<Text, Text, Datapoint, Text> {
 
 		/*
 		 * Reduce function will emit all the points to that center and calculate
 		 * the next center for these points
 		 */
 		 @Override
-		 public void reduce(Datapoint key, Iterator<Datapoint> values,
-		     OutputCollector<Text, Text> output, Reporter reporter)
+		 public void reduce(Text key, Iterator<Text> values,
+		     OutputCollector<Datapoint, Text> output, Reporter reporter)
 		     throws IOException {
 		   Datapoint newCenter = new Datapoint(0.0,0.0);
 		   Datapoint sum = new Datapoint(0.0,0.0);
 		   int count = 0;
 		   String points = "";
 		   while (values.hasNext()) {
-		     Datapoint d = values.next().get();
+			 //printValues(values.next());
+			 String line = values.next().toString();  
+		    String[] temp = line.split(cvsdelimiter);
+				//String[] temp = temp2[1].split(cvsdelimiter);
+			Datapoint d = new Datapoint(Double.parseDouble(temp[0]),Double.parseDouble(temp[1])); 
 		     points = points + " " + d.toString();
 		     sum.x = sum.x + d.x;
 		     sum.y = sum.y + d.y;
@@ -400,9 +430,10 @@ public class KMeans {
 		   newCenter.x = sum.x / count;
 		   newCenter.y = sum.y / count;
 		   String ncenter = newCenter.toString();
+		   printString(ncenter);
 
 		   // Emit the new center and point
-		   output.collect(new Text(ncenter), new Text(points));
+		   output.collect(new Datapoint(newCenter), new Text(points));
 		 }
 	}
 }
