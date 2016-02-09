@@ -63,7 +63,7 @@ Specify the input_folder as args[0] and output_folder as args[1] as run time arg
 
 Future Work :
 ==============
-
-* Script to run for different k values and gather output.
-* Python Script to visualize output
-* Automate/Integrate all works 
+1. Test for larger inputs, (Internet sources suggest for clustering large input, Apache Mahout is needed for production usage. Exploring that option)
+2. Python script to visualise output for different K.
+3. Script to run Program for several Ks.
+4. Upgrade mapred package implementation to map reduce package implementation
