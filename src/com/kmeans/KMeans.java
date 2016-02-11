@@ -167,22 +167,6 @@ public class KMeans {
 			
 			List<Datapoint> centers_next = construct_Datapointlist(outfile_path);
 			
-			/*
-			// Read Outputfile and get centroids value
-			FileSystem outfs = FileSystem.get(new Configuration());
-			BufferedReader outreader = new BufferedReader(new InputStreamReader(outfs.open(outfile_path)));
-			List<Datapoint> centers_next = new ArrayList<Datapoint>();
-			String line = outreader.readLine();
-			while (line != null) {
-				String[] temp2 = line.split(delimiter);
-				String[] temp = temp2[1].split(",");
-				Datapoint current = new Datapoint(Double.parseDouble(temp[0]),Double.parseDouble(temp[1]));
-				centers_next.add(current);
-				line = outreader.readLine();
-			}
-			outreader.close();
-			*/
-			
 			//Checking convergence
 			if (iter_count == 0) {
 				previous = input_folder + centroidsfile;
@@ -192,40 +176,6 @@ public class KMeans {
 			Path prevfile_path = new Path(previous);
 			List<Datapoint> centers_current = construct_Datapointlist(prevfile_path);
 			int k = centers_current.size();
-			
-			/*
-			FileSystem prevfs = FileSystem.get(new Configuration());
-			BufferedReader curreader = new BufferedReader(new InputStreamReader(prevfs.open(prevfile)));
-			List<Datapoint> centers_prev = new ArrayList<Datapoint>();
-			String line2 = curreader.readLine();
-			while (line2 != null) {
-				String[] temp2 = line.split(delimiter);
-				String[] temp = temp2[1].split(",");
-				Datapoint current = new Datapoint(Double.parseDouble(temp[0]),Double.parseDouble(temp[1]));
-				centers_prev.add(current);
-				line2 = curreader.readLine();
-			}
-			curreader.close();
-			*/
-
-			/*
-			// Convergence check done.
-			//Collections.sort(centers_next);
-			//Collections.sort(centers_prev);
-
-			
-			//converged = checkconvergence(iter_count, k_value);
-			Iterator<Double> it = centers_current.iterator();
-			for (double d : centers_next) {
-				double temp = it.next();
-				if (Math.abs(temp - d) <= 0.1) {
-					converged = true;
-				} else {
-					converged = false;
-					break;
-				}
-			}
-			*/
 			
 			// Convergence check
 			converged = checkconvergence(centers_current, centers_next, iter_count, k);
